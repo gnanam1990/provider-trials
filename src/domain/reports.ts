@@ -228,6 +228,72 @@ export function reportFieldEvidence(ctx: Ctx, report: any, providerId: string) {
   return { report_id: report.id, provider_id: providerId, samples };
 }
 
+/**
+ * Quality-over-suite-versions curve. Points are grouped by normalizer
+ * version — different scoring rules never appear as a like-for-like trend
+ * (INV-07). Only trials with an issued report contribute points.
+ */
+export function qualityCurve(ctx: Ctx, providerId: string, suiteId: string) {
+  const trialsRows = ctx.db.all<any>(
+    `SELECT t.*, s.normalizer_version FROM trials t JOIN suites s
+       ON s.id=t.suite_id AND s.version=t.suite_version
+     WHERE t.suite_id=? ORDER BY t.suite_version, t.created_at`,
+    suiteId,
+  );
+  const series: Record<string, any[]> = {};
+  for (const t of trialsRows) {
+    if (!JSON.parse(t.providers_json).includes(providerId)) continue;
+    const rep = ctx.db.get<any>(
+      "SELECT * FROM reports WHERE trial_id=? ORDER BY asof_cursor DESC, created_at DESC LIMIT 1",
+      t.id,
+    );
+    if (!rep) continue;
+    const body = JSON.parse(rep.body_json);
+    const row = body.providers.find((p: any) => p.provider_id === providerId);
+    if (!row) continue;
+    (series[t.normalizer_version] ??= []).push({
+      suite_version: t.suite_version,
+      trial_id: t.id,
+      report_id: rep.id,
+      asof_cursor: rep.asof_cursor,
+      manifest_hash: t.manifest_hash,
+      accepted: row.accepted,
+      attempted: row.attempted,
+      fields_correct: row.fields_correct,
+      fields_total: row.fields_total,
+      cost_per_accepted_minor: row.cost_per_accepted_minor,
+      run_window: body.run_window,
+    });
+  }
+  return {
+    provider_id: providerId,
+    suite_id: suiteId,
+    series: Object.entries(series).map(([normalizer_version, points]) => ({
+      normalizer_version,
+      comparable_within_series: true,
+      points,
+    })),
+    note: "points in different normalizer_version series are not like-for-like",
+  };
+}
+
+/** Buyer-private export; caller already enforced account + role. */
+export function exportReport(report: any, format: string): { body: string; media: string } {
+  const body = report.body;
+  if (format === "csv") {
+    const head = "provider_id,scheduled,attempted,accepted,fields_correct,fields_total,spend_minor,cost_per_accepted_minor,cost_state,coverage,latency_n,latency_p50_ms,latency_p95_ms\n";
+    const lines = body.providers.map((p: any) =>
+      [
+        p.provider_id, p.scheduled, p.attempted, p.accepted, p.fields_correct, p.fields_total,
+        p.spend_minor, p.cost_per_accepted_minor ?? "", p.cost_state, p.coverage,
+        p.latency.n, p.latency.p50 ?? "", p.latency.p95 ?? "",
+      ].join(","),
+    );
+    return { body: head + lines.join("\n") + "\n", media: "text/csv" };
+  }
+  return { body: JSON.stringify({ report_id: report.id, ...body }, null, 2), media: "application/json" };
+}
+
 /** Rebuild a report body from its frozen cursor and compare byte-for-byte. */
 export function rebuildReport(ctx: Ctx, reportId: string): { identical: boolean; diffs?: any } {
   const r = ctx.db.get<any>("SELECT * FROM reports WHERE id=?", reportId);

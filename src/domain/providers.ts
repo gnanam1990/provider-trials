@@ -241,6 +241,54 @@ export function activeBinding(ctx: Ctx, providerId: string): any | null {
   );
 }
 
+/**
+ * Key or origin rotation invalidates the current binding (SECURITY.md):
+ * existing attestation is revoked and fresh enrollment is required before
+ * any new dispatch. Prior evidence stays pinned to the revoked binding.
+ */
+export function rotateProvider(
+  ctx: Ctx,
+  actor: Actor,
+  providerId: string,
+  input: { endpoint_origin?: string; key_id?: string; public_key_pem?: string },
+): ProviderRow {
+  const p = getProvider(ctx, providerId);
+  if (p.account_id !== actor.accountId) throw notFound("provider");
+  if (!input.endpoint_origin && !input.key_id && !input.public_key_pem) {
+    throw badRequest("missing_fields", "endpoint_origin, key_id or public_key_pem is required");
+  }
+  let origin = p.endpoint_origin;
+  if (input.endpoint_origin) {
+    try {
+      origin = normalizeOrigin(input.endpoint_origin);
+    } catch {
+      throw badRequest("invalid_origin", "endpoint_origin must be an http(s) origin");
+    }
+    if (!originAllowed(origin, ctx.config.allowedHosts)) {
+      throw forbidden("origin_not_allowed", `origin ${origin} is outside the configured allowlist`);
+    }
+  }
+  ctx.db.tx(() => {
+    const valid = ctx.db.get<any>(
+      "SELECT id FROM bindings WHERE provider_id=? AND state='valid'", p.id);
+    if (valid) {
+      ctx.db.run("UPDATE bindings SET state='revoked' WHERE id=?", valid.id);
+    }
+    ctx.db.run(
+      "UPDATE providers SET endpoint_origin=?, key_id=?, public_key_pem=?, state='unverified' WHERE id=?",
+      origin,
+      input.key_id ?? p.key_id,
+      input.public_key_pem ?? p.public_key_pem,
+      p.id,
+    );
+  });
+  audit(ctx, actor, "provider.rotate", "binding_revoked_rotation", "provider", p.id, {
+    origin_changed: input.endpoint_origin !== undefined,
+    key_changed: input.key_id !== undefined || input.public_key_pem !== undefined,
+  });
+  return getProvider(ctx, providerId);
+}
+
 export function publicProviderView(ctx: Ctx, p: ProviderRow) {
   const bindings = ctx.db.all(
     "SELECT id,origin,key_id,state,valid_from,expires_at,superseded_by FROM bindings WHERE provider_id=? ORDER BY created_at",

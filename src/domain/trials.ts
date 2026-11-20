@@ -253,6 +253,39 @@ export function trialCoverage(ctx: Ctx, trialId: string) {
   };
 }
 
+/**
+ * Opt-in recurring trial: creates a fresh planned trial on the latest frozen
+ * suite version using the original provider set and budget. Requires the
+ * source trial to carry recurring opt-in (FR-07).
+ */
+export function rerunTrial(ctx: Ctx, actor: Actor, trialId: string): any {
+  const src = getTrial(ctx, trialId);
+  if (src.account_id !== actor.accountId) throw notFound("trial");
+  const recurring = src.recurring_json ? JSON.parse(src.recurring_json) : null;
+  if (!recurring?.enabled) {
+    throw conflict("recurring_not_enabled", "trial was not created with recurring opt-in");
+  }
+  const latest = ctx.db.get<any>(
+    "SELECT MAX(version) v FROM suites WHERE id=? AND state='frozen'",
+    src.suite_id,
+  );
+  if (!latest || latest.v === null) {
+    throw conflict("no_frozen_version", "suite has no frozen version to rerun against");
+  }
+  return createTrial(ctx, actor, {
+    suite_id: src.suite_id,
+    suite_version: latest.v,
+    provider_ids: JSON.parse(src.providers_json),
+    budget_minor: src.budget_minor,
+    per_provider_cap_minor: src.per_provider_cap_minor,
+    asset: src.asset,
+    ranking_min_observations: src.ranking_min_observations,
+    small_sample_threshold: src.small_sample_threshold,
+    dispatch_timeout_ms: src.dispatch_timeout_ms,
+    recurring: recurring,
+  });
+}
+
 /** Terminal-cell check after each drain; sets complete/partial. */
 export function maybeFinalizeTrial(ctx: Ctx, trialId: string): void {
   const trial = ctx.db.get<any>("SELECT * FROM trials WHERE id=?", trialId);

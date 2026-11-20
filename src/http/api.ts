@@ -79,6 +79,24 @@ export function buildApi(ctx: Ctx): Router {
     return { status: 201, json: out };
   });
 
+  r.post("/providers/{id}/rotate", (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "provider_operator");
+    const p = providers.getProvider(ctx, req.params.id);
+    if (p.account_id !== a.accountId) throw notFound("provider");
+    requireOwner(p, a.subject);
+    const out = providers.rotateProvider(ctx, a, p.id, req.body ?? {});
+    return { json: { provider: providers.publicProviderView(ctx, out) } };
+  });
+
+  r.get("/providers/{id}/quality-curve", (req) => {
+    const a = requireActor(ctx, req);
+    const p = providers.getProvider(ctx, req.params.id);
+    if (p.account_id !== a.accountId) throw notFound("provider");
+    const suiteId = req.query.get("suite_id") ?? "";
+    return { json: reports.qualityCurve(ctx, p.id, suiteId) };
+  });
+
   r.post("/suites", (req) => {
     const a = requireActor(ctx, req);
     requireRole(a, "dataset_steward");
@@ -296,6 +314,42 @@ export function buildApi(ctx: Ctx): Router {
     const t = trials.getTrial(ctx, rep.trial_id);
     if (t.account_id !== a.accountId) throw notFound("report");
     return { json: reports.rebuildReport(ctx, rep.id) };
+  });
+
+  r.get("/reports/{id}/export", (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "analyst", "procurement_lead");
+    const rep = reports.getReport(ctx, req.params.id);
+    const t = trials.getTrial(ctx, rep.trial_id);
+    if (t.account_id !== a.accountId) throw notFound("report");
+    const format = req.query.get("format") ?? "json";
+    const out = reports.exportReport(rep, format);
+    return {
+      text: out.body,
+      headers: {
+        "content-type": out.media,
+        "content-disposition": `attachment; filename="report-${rep.id}.${format}"`,
+      },
+    };
+  });
+
+  r.post("/trials/{id}/rerun", (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "procurement_lead", "runner");
+    const t = trials.rerunTrial(ctx, a, req.params.id);
+    return { status: 201, json: { trial: publicTrial(t) } };
+  });
+
+  r.get("/audit", (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "procurement_lead");
+    const entity = req.query.get("entity");
+    const entityId = req.query.get("entity_id");
+    const rows = entity && entityId
+      ? ctx.db.all("SELECT * FROM audit_log WHERE account_id=? AND entity=? AND entity_id=? ORDER BY id",
+          a.accountId, entity, entityId)
+      : ctx.db.all("SELECT * FROM audit_log WHERE account_id=? ORDER BY id LIMIT 500", a.accountId);
+    return { json: { audit: rows } };
   });
 
   return r;

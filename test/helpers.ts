@@ -17,10 +17,13 @@ export interface TestEnv {
   close: () => Promise<void>;
 }
 
-/** Boots a real HTTP server on an ephemeral port backed by in-memory sqlite. */
-export async function startEnv(configOverrides: Partial<ReturnType<typeof defaultConfig>> = {}): Promise<TestEnv> {
+/** Boots a real HTTP server on an ephemeral port backed by sqlite (memory or file). */
+export async function startEnv(
+  configOverrides: Partial<ReturnType<typeof defaultConfig>> = {},
+  dbPath = ":memory:",
+): Promise<TestEnv> {
   let now = Date.now();
-  const db = Db.open(":memory:");
+  const db = Db.open(dbPath);
   const config = { ...defaultConfig(), ...configOverrides };
   const ctx = makeCtx(db, config, () => now);
   const api = buildApi(ctx);

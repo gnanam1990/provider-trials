@@ -72,11 +72,15 @@
     {
       "id": "M06",
       "title": "Comparison reports",
-      "state": "pending",
+      "state": "accepted",
       "owner": null,
-      "commands": [],
-      "evidence": [],
-      "nextAction": "Generate buyer-private reports with workload, dated sample size, confusion details, cost per accepted invoice, latency percentiles with sample count, and coverage thresholds."
+      "commands": [
+        "node --test test/m06.test.ts"
+      ],
+      "evidence": [
+        "T-011 12c/3 accepted -> exactly 4c, coverage 4/4, small-sample warning, ranking suppressed. T-012 unverified receipt -> cost_state unknown, cost_per_accepted null. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
     },
     {
       "id": "M07",
