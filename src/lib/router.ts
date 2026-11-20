@@ -156,9 +156,13 @@ function sendError(res: http.ServerResponse, e: unknown, consolePage = false): v
       status: err.status,
       html: `<!doctype html><html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1"><title>Error ${err.status}</title>
-<style>body{font-family:ui-sans-serif,system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem;line-height:1.45}
-.warn{background:#7c2d12;color:#fde8d8;padding:.6rem .8rem;border-radius:.4rem}</style></head>
-<body><main><h1>${err.status} ${h(err.code)}</h1><p class="warn" role="status">${h(err.message)}</p>
+<style>body{font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif;background:#FEF8F0;color:#1F1A14;max-width:40rem;margin:2rem auto;padding:0 1rem;line-height:1.5}
+h1{font-family:"Crimson Text",Georgia,serif;font-weight:600}
+.error{background:#FBE7DE;color:#A23A1A;border:1px solid #E7B7A3;padding:.6rem .8rem;border-radius:.45rem}
+a{color:#485C11;text-underline-offset:2px}
+@media (prefers-color-scheme:dark){body{background:#211B14;color:#F2ECDF}
+.error{background:#4A2013;color:#F0A98C;border-color:#7A4430}a{color:#7C9A3D}}</style></head>
+<body><main><h1>${err.status} ${h(err.code)}</h1><p class="error" role="alert">${h(err.message)}</p>
 <p><a href="/console">Back to the console</a></p></main></body></html>`,
     });
     return;

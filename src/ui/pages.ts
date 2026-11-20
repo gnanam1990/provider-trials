@@ -16,26 +16,61 @@ const esc = (s: unknown): string =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
 
 const CSS = `
-:root{color-scheme:light dark}
-body{font-family:ui-sans-serif,system-ui,sans-serif;max-width:64rem;margin:0 auto;padding:1rem;line-height:1.45}
-nav{display:flex;gap:1rem;flex-wrap:wrap;border-bottom:1px solid #8885;padding-bottom:.5rem;margin-bottom:1rem}
-nav a{color:#4f6ef7;text-decoration:none}
-.table-wrap{overflow-x:auto}
-table{border-collapse:collapse;width:100%;margin:.75rem 0}
-th,td{border:1px solid #8885;padding:.35rem .6rem;text-align:left;font-size:.9rem;vertical-align:top;overflow-wrap:break-word}
-th{background:#8882;white-space:nowrap}
+:root{
+  color-scheme:light dark;
+  --paper:#FEF8F0;--ink:#1F1A14;--card:#FFFDF9;--line:#E3D7C2;
+  --action:#485C11;--action-ink:#FFF;--action-hover:#3A4B0D;
+  --muted:#6B6154;
+  --warn-bg:#F7EAD9;--warn-ink:#5C3A10;--warn-bd:#E4CD9F;
+  --error-bg:#FBE7DE;--error-ink:#A23A1A;--error-bd:#E7B7A3;
+  --good-bg:#EDF3DC;--good-ink:#3E4F0E;--good-bd:#C9D6A4;
+  --sel:#DCE6BC;
+}
+@media (prefers-color-scheme:dark){
+  :root{
+    --paper:#211B14;--ink:#F2ECDF;--card:#2B241B;--line:#4B4133;
+    --muted:#B4A78F;
+    --warn-bg:#443413;--warn-ink:#F0D6A0;--warn-bd:#6B5526;
+    --error-bg:#4A2013;--error-ink:#F0A98C;--error-bd:#7A4430;
+    --good-bg:#2E3A12;--good-ink:#CFE09C;--good-bd:#54651F;
+    --sel:#55630F;
+  }
+}
+body{font-family:"DM Sans",ui-sans-serif,system-ui,sans-serif;background:var(--paper);color:var(--ink);max-width:64rem;margin:0 auto;padding:1rem 1.25rem 3rem;line-height:1.5}
+::selection{background:var(--sel)}
+a{color:var(--action);text-underline-offset:2px}
+nav{display:flex;gap:1rem;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:.55rem;margin-bottom:1rem;font-size:.95rem}
+nav a{color:var(--action);text-decoration:none}
+nav a:hover{text-decoration:underline}
+h1,h2,h3{font-family:"Crimson Text",Georgia,"Times New Roman",serif;font-weight:600;line-height:1.2}
+h1{font-size:1.5rem;margin:.3rem 0 .7rem}
+h2{font-size:1.2rem;margin-top:1.5rem}
+h3{font-size:1.05rem}
 code{overflow-wrap:anywhere}
-.badge{display:inline-block;padding:.1rem .45rem;border-radius:.6rem;font-size:.75rem;border:1px solid #8886;white-space:nowrap}
-.warn{background:#7c2d12;color:#fde8d8;padding:.6rem .8rem;border-radius:.4rem;margin:.5rem 0}
-.muted{color:light-dark(#595959,#a8a8a8)}
+code,pre{font-family:ui-monospace,"SF Mono",Menlo,monospace;font-size:.85em}
+pre{background:var(--card);border:1px solid var(--line);border-radius:.4rem;padding:.55rem .7rem;overflow-x:auto}
+.table-wrap{overflow-x:auto;background:var(--card);border:1px solid var(--line);border-radius:.5rem;margin:.75rem 0}
+table{border-collapse:collapse;width:100%;min-width:40rem;font-variant-numeric:tabular-nums}
+th,td{padding:.45rem .65rem;text-align:left;font-size:.9rem;vertical-align:top;overflow-wrap:break-word;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{background:color-mix(in srgb,var(--line) 40%,var(--card));color:var(--muted);font-size:.78rem;text-transform:uppercase;letter-spacing:.04em}
+.badge{display:inline-block;padding:.08rem .5rem;border-radius:1rem;font-size:.75rem;border:1px solid var(--line);white-space:nowrap;background:var(--card)}
+.badge.good{background:var(--good-bg);color:var(--good-ink);border-color:var(--good-bd)}
+.badge.bad{background:var(--error-bg);color:var(--error-ink);border-color:var(--error-bd)}
+.badge.warn{background:var(--warn-bg);color:var(--warn-ink);border-color:var(--warn-bd)}
+.warn,.error{padding:.6rem .8rem;border:1px solid;border-radius:.45rem;margin:.5rem 0}
+.warn{background:var(--warn-bg);color:var(--warn-ink);border-color:var(--warn-bd)}
+.error{background:var(--error-bg);color:var(--error-ink);border-color:var(--error-bd)}
+.muted{color:var(--muted)}
 form.inline{display:inline}
-fieldset{border:1px solid #8885;border-radius:.4rem;margin:.6rem 0}
+fieldset{border:1px solid var(--line);border-radius:.45rem;margin:.6rem 0;background:var(--card);padding:.5rem .8rem}
+legend{font-size:.8rem;color:var(--muted);padding:0 .3rem}
 label{display:block;margin:.3rem 0;font-size:.85rem}
-label>:is(input:not([type="checkbox"]),select,textarea){display:block;margin:.15rem 0 .2rem;max-width:34rem;width:100%}
-input,select,textarea{font:inherit;max-width:100%;padding:.3rem .45rem}
-button{font:inherit;cursor:pointer;padding:.35rem .7rem}
-:focus-visible{outline:2px solid #4f6ef7;outline-offset:2px}
-h1{font-size:1.4rem}h2{font-size:1.1rem;margin-top:1.4rem}
+label>:is(input:not([type="checkbox"]),select,textarea){display:block;margin:.15rem 0 .25rem;max-width:34rem;width:100%}
+input,select,textarea{font:inherit;max-width:100%;padding:.3rem .45rem;border:1px solid var(--line);border-radius:.35rem;background:var(--card);color:var(--ink)}
+button{font:inherit;font-weight:600;cursor:pointer;padding:.4rem .8rem;border-radius:.4rem;border:1px solid var(--action);background:var(--action);color:var(--action-ink)}
+button:hover{background:var(--action-hover);border-color:var(--action-hover)}
+:focus-visible{outline:2px solid var(--action);outline-offset:2px}
 small{display:block}
 `;
 
@@ -70,9 +105,17 @@ function td(...cells: unknown[]): string {
   return `<tr>${cells.map((c) => `<td>${c}</td>`).join("")}</tr>`;
 }
 const fmtCost = (v: number | null, reason: string | null): string =>
-  v === null ? `<span class="muted">unknown${reason ? ` — ${esc(reason)}` : ""}</span>` : `${v}¢`;
-const badge = (s: string): string => `<span class="badge">${esc(s)}</span>`;
+  v === null ? `<span class="muted">unknown${reason ? ` — ${esc(reason)}` : ""}</span>` : `<strong>${v}¢</strong>`;
+const badge = (s: string): string => {
+  const k = s.toLowerCase();
+  const cls = /bound|valid|complete|succeeded|frozen|accepted|verified/.test(k) ? " good"
+    : /expired|revoked|fail|blocked|denied|error/.test(k) ? " bad"
+    : /running|dispatched|uncertain|partial|reserved|pending/.test(k) ? " warn"
+    : "";
+  return `<span class="badge${cls}">${esc(s)}</span>`;
+};
 const warnP = (html: string): string => `<p class="warn" role="status">${html}</p>`;
+const errP = (html: string): string => `<p class="error" role="alert">${html}</p>`;
 const tbl = (head: string, rows: string[]): string =>
   rows.length
     ? `<div class="table-wrap"><table>${head}${rows.join("")}</table></div>`
@@ -112,7 +155,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
     const { account_id, subject, credential, demo_member } = req.body ?? {};
     const failed = (msg: string) => ({
       status: 403,
-      html: page("Sign in", null, `${warnP(msg)}<p><a href="/console/login">Back</a></p>`),
+      html: page("Sign in", null, `${errP(msg)}<p><a href="/console/login">Back</a></p>`),
     });
     let member: { account_id: string; subject: string; role: Actor["role"] } | undefined;
     if (demo_member) {
