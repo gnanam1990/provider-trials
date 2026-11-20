@@ -9,6 +9,7 @@ import * as trials from "../domain/trials.ts";
 import * as execution from "../domain/execution.ts";
 import * as reports from "../domain/reports.ts";
 import { runIdempotent } from "../idempotency.ts";
+import { mountConsole } from "../ui/pages.ts";
 
 export function buildApi(ctx: Ctx): Router {
   const r = new Router();
@@ -352,6 +353,7 @@ export function buildApi(ctx: Ctx): Router {
     return { json: { audit: rows } };
   });
 
+  mountConsole(ctx, r);
   return r;
 }
 

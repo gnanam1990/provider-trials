@@ -83,7 +83,13 @@ export class Router {
         const out = await route.handler(req);
         if (!res.writableEnded) send(res, out ?? { status: 200, json: { ok: true } });
       } catch (e) {
-        if (!res.writableEnded) sendError(res, e);
+        if (!res.writableEnded) {
+          if (e && typeof e === "object" && "redirect" in (e as any)) {
+            send(res, { status: 303, headers: { location: (e as any).redirect }, text: "" });
+          } else {
+            sendError(res, e);
+          }
+        }
       }
       return;
     }

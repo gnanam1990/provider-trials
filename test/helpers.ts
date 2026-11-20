@@ -210,6 +210,8 @@ export class FakeProvider {
   mode: "ok" | "hang" | "error" | "bad_receipt" = "ok";
   /** sample content-hash suffix -> fields to return, or fallback */
   fieldPlan: Record<string, Record<string, string>> = {};
+  /** sample content-hash suffix -> charge in minor units for that call */
+  priceOverrides: Record<string, number> = {};
   defaultFields: Record<string, string> = { date: "2000-01-01", tax: "0.00", total: "0.00" };
   invocations = new Map<string, OcrInvocation>();
   latencyMs = 5;
@@ -270,7 +272,7 @@ export class FakeProvider {
       receipt_id: `rcpt_${ref}`,
       invocation_ref: ref,
       trial_id: body.trial_id,
-      amount_minor: this.priceMinor,
+      amount_minor: this.priceOverrides[planKey] ?? this.priceMinor,
       asset: this.asset,
       environment: "local-emulator",
     };

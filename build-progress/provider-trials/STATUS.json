@@ -85,11 +85,15 @@
     {
       "id": "M07",
       "title": "Audit, freshness and reruns",
-      "state": "pending",
+      "state": "accepted",
       "owner": null,
-      "commands": [],
-      "evidence": [],
-      "nextAction": "Add curve of quality over suite versions, opt-in recurring trials, results export, role-scoped evidence and read-only reconstruction from frozen records."
+      "commands": [
+        "node --test test/m07.test.ts"
+      ],
+      "evidence": [
+        "T-013 byte-identical rebuild after file-db restart. T-014 label correction + rotation leave report untouched, new evidence pins new binding. Extra: rerun/curve/export/tenant isolation. 3 tests exit 0"
+      ],
+      "nextAction": "complete"
     },
     {
       "id": "M08",
