@@ -1,0 +1,84 @@
+{
+  "project": "Provider Trials",
+  "packVersion": "1.0",
+  "testedSha": null,
+  "targetBranch": "devin/provider-trials",
+  "modules": [
+    {
+      "id": "M01",
+      "title": "Endpoint ownership",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m01.test.ts"
+      ],
+      "evidence": [
+        "T-001 binding valid via dual proof; T-002 wrong-origin nonce rejected + replay blocked. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "M02",
+      "title": "Consent and suite freezing",
+      "state": "pending",
+      "owner": null,
+      "commands": [],
+      "evidence": [],
+      "nextAction": "Import consented redacted invoices, create buyer-only truth records, document allowed processors and hash a versioned sample manifest and normalization configuration."
+    },
+    {
+      "id": "M03",
+      "title": "Budgeted experiment scheduling",
+      "state": "pending",
+      "owner": null,
+      "commands": [],
+      "evidence": [],
+      "nextAction": "Expand the provider-by-sample matrix, reserve per-provider authorized spend and enforce bounded dispatch concurrency. Store completion, quota and timeout reasons separately."
+    },
+    {
+      "id": "M04",
+      "title": "Paid execution and receipt matching",
+      "state": "pending",
+      "owner": null,
+      "commands": [],
+      "evidence": [],
+      "nextAction": "Build OCR adapter contracts and receipt capture, bind transport and credential use to the declared provider, and record receipt provenance and attempt latency."
+    },
+    {
+      "id": "M05",
+      "title": "Typed scoring and acceptance",
+      "state": "pending",
+      "owner": null,
+      "commands": [],
+      "evidence": [],
+      "nextAction": "Implement manifest-pinned Unicode, monetary and date normalization, mandatory-field acceptance, timeout handling and interpretable field errors."
+    },
+    {
+      "id": "M06",
+      "title": "Comparison reports",
+      "state": "pending",
+      "owner": null,
+      "commands": [],
+      "evidence": [],
+      "nextAction": "Generate buyer-private reports with workload, dated sample size, confusion details, cost per accepted invoice, latency percentiles with sample count, and coverage thresholds."
+    },
+    {
+      "id": "M07",
+      "title": "Audit, freshness and reruns",
+      "state": "pending",
+      "owner": null,
+      "commands": [],
+      "evidence": [],
+      "nextAction": "Add curve of quality over suite versions, opt-in recurring trials, results export, role-scoped evidence and read-only reconstruction from frozen records."
+    },
+    {
+      "id": "M08",
+      "title": "Buyer workflow and acceptance proof",
+      "state": "pending",
+      "owner": null,
+      "commands": [],
+      "evidence": [],
+      "nextAction": "Build the procurement-to-report UI with consent and cap review, coverage filters, small-sample notices and the two-provider acceptance scenario. Exercise API plus browser from clean storage."
+    }
+  ]
+}
