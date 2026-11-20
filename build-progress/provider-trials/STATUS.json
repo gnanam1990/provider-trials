@@ -98,11 +98,16 @@
     {
       "id": "M08",
       "title": "Buyer workflow and acceptance proof",
-      "state": "pending",
+      "state": "accepted",
       "owner": null,
-      "commands": [],
-      "evidence": [],
-      "nextAction": "Build the procurement-to-report UI with consent and cap review, coverage filters, small-sample notices and the two-provider acceptance scenario. Exercise API plus browser from clean storage."
+      "commands": [
+        "node --test test/m08.test.ts",
+        "npm test"
+      ],
+      "evidence": [
+        "T-015 report renders 4c vs 5c, 4/4 coverage, small-sample warnings in API+HTML. T-016 ranking suppressed min_observations. Tenant isolation 404. Full suite: 17 tests exit 0"
+      ],
+      "nextAction": "complete"
     }
   ]
 }

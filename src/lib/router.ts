@@ -87,13 +87,13 @@ export class Router {
           if (e && typeof e === "object" && "redirect" in (e as any)) {
             send(res, { status: 303, headers: { location: (e as any).redirect }, text: "" });
           } else {
-            sendError(res, e);
+            sendError(res, e, path.startsWith("/console"));
           }
         }
       }
       return;
     }
-    send(res, { status: 404, json: { error: { code: "not_found", message: `${raw.method} ${path}` } } });
+    sendError(res, new ApiError(404, "not_found", `${raw.method} ${path}`), path.startsWith("/console"));
   }
 }
 
@@ -143,11 +143,25 @@ export function send(res: http.ServerResponse, r: Resp): void {
   res.end(payload);
 }
 
-function sendError(res: http.ServerResponse, e: unknown): void {
-  if (e instanceof ApiError) {
-    send(res, { status: e.status, json: { error: { code: e.code, message: e.message, details: e.details } } });
+function sendError(res: http.ServerResponse, e: unknown, consolePage = false): void {
+  if (!(e instanceof ApiError)) {
+    console.error("unhandled route error:", e);
+    e = new ApiError(500, "internal", "internal error");
+  }
+  const err = e as ApiError;
+  if (consolePage) {
+    const h = (s: string) => s.replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+    send(res, {
+      status: err.status,
+      html: `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"><title>Error ${err.status}</title>
+<style>body{font-family:ui-sans-serif,system-ui,sans-serif;max-width:40rem;margin:2rem auto;padding:0 1rem;line-height:1.45}
+.warn{background:#7c2d12;color:#fde8d8;padding:.6rem .8rem;border-radius:.4rem}</style></head>
+<body><main><h1>${err.status} ${h(err.code)}</h1><p class="warn" role="status">${h(err.message)}</p>
+<p><a href="/console">Back to the console</a></p></main></body></html>`,
+    });
     return;
   }
-  console.error("unhandled route error:", e);
-  send(res, { status: 500, json: { error: { code: "internal", message: "internal error" } } });
+  send(res, { status: err.status, json: { error: { code: err.code, message: err.message, details: err.details } } });
 }

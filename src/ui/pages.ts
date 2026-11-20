@@ -21,18 +21,20 @@ const CSS = `
 body{font-family:ui-sans-serif,system-ui,sans-serif;max-width:64rem;margin:0 auto;padding:1rem;line-height:1.45}
 nav{display:flex;gap:1rem;flex-wrap:wrap;border-bottom:1px solid #8885;padding-bottom:.5rem;margin-bottom:1rem}
 nav a{color:#4f6ef7;text-decoration:none}
+.table-wrap{overflow-x:auto}
 table{border-collapse:collapse;width:100%;margin:.75rem 0}
-th,td{border:1px solid #8885;padding:.35rem .6rem;text-align:left;font-size:.9rem}
-th{background:#8882}
-.badge{display:inline-block;padding:.1rem .45rem;border-radius:.6rem;font-size:.75rem;border:1px solid #8886}
+th,td{border:1px solid #8885;padding:.35rem .6rem;text-align:left;font-size:.9rem;vertical-align:top;overflow-wrap:break-word}
+th{background:#8882;white-space:nowrap}
+code{overflow-wrap:anywhere}
+.badge{display:inline-block;padding:.1rem .45rem;border-radius:.6rem;font-size:.75rem;border:1px solid #8886;white-space:nowrap}
 .warn{background:#7c2d12;color:#fde8d8;padding:.6rem .8rem;border-radius:.4rem;margin:.5rem 0}
-.ok{background:#14532d;color:#d9f7e4;padding:.6rem .8rem;border-radius:.4rem;margin:.5rem 0}
-.muted{color:#888}
+.muted{color:light-dark(#595959,#a8a8a8)}
 form.inline{display:inline}
 fieldset{border:1px solid #8885;border-radius:.4rem;margin:.6rem 0}
 label{display:block;margin:.3rem 0;font-size:.85rem}
-input,select,textarea{font:inherit;max-width:100%}
-button{font:inherit;cursor:pointer}
+label>:is(input:not([type="checkbox"]),select,textarea){display:block;margin:.15rem 0 .2rem;max-width:34rem;width:100%}
+input,select,textarea{font:inherit;max-width:100%;padding:.3rem .45rem}
+button{font:inherit;cursor:pointer;padding:.35rem .7rem}
 :focus-visible{outline:2px solid #4f6ef7;outline-offset:2px}
 h1{font-size:1.4rem}h2{font-size:1.1rem;margin-top:1.4rem}
 small{display:block}
@@ -53,8 +55,8 @@ function page(title: string, actor: Actor | null, inner: string): string {
 <body>${nav}<main><h1>${esc(title)}</h1>${inner}</main></body></html>`;
 }
 
-/** Console actor: redirects to login on unauthenticated GETs. */
-function actor(ctx: Ctx, req: Req, res: Resp | null = null): Actor {
+/** Console actor: redirects to login when unauthenticated. */
+function actor(ctx: Ctx, req: Req): Actor {
   try {
     return requireActor(ctx, req);
   } catch {
@@ -71,6 +73,11 @@ function td(...cells: unknown[]): string {
 const fmtCost = (v: number | null, reason: string | null): string =>
   v === null ? `<span class="muted">unknown${reason ? ` — ${esc(reason)}` : ""}</span>` : `${v}¢`;
 const badge = (s: string): string => `<span class="badge">${esc(s)}</span>`;
+const warnP = (html: string): string => `<p class="warn" role="status">${html}</p>`;
+const tbl = (head: string, rows: string[]): string =>
+  rows.length
+    ? `<div class="table-wrap"><table>${head}${rows.join("")}</table></div>`
+    : `<p class="muted">None yet.</p>`;
 
 export function mountConsole(ctx: Ctx, r: Router): void {
   const go = (loc: string): Resp => ({ status: 303, headers: { location: loc }, text: "" });
@@ -81,7 +88,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
     html: page("Sign in", null, `
       <p class="muted">Local development console: select an enrolled member identity.</p>
       <form method="post" action="/console/login">
-        <label>Account <input name="account_id" required></label>
+        <label>Account <input name="account_id" required autofocus></label>
         <label>Subject <input name="subject" required></label>
         <label>Role
           <select name="role">
@@ -99,7 +106,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
       account_id, subject, role,
     );
     if (!m) {
-      return { status: 403, html: page("Sign in", null, `<p class="warn">No such member/role in that account.</p><p><a href="/console/login">Back</a></p>`) };
+      return { status: 403, html: page("Sign in", null, `${warnP("No such member/role in that account.")}<p><a href="/console/login">Back</a></p>`) };
     }
     return {
       status: 303,
@@ -139,7 +146,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
       const uncertain = ctx.db.all("SELECT DISTINCT trial_id FROM cells WHERE state='uncertain'");
       items = `<h2>Dispatch work</h2><p>${pending} queued dispatch items.</p>
         <ul>${running.map((t: any) => `<li><a href="/console/trials/${t.id}">${t.id}</a> ${badge("running")}</li>`).join("")}</ul>
-        ${uncertain.length ? `<p class="warn">${uncertain.length} trial(s) with uncertain attempts need reconciliation.</p>` : ""}`;
+        ${uncertain.length ? warnP(`${uncertain.length} trial(s) with uncertain attempts need reconciliation.`) : ""}`;
     } else {
       const reps = ctx.db.all("SELECT r.*, t.account_id FROM reports r JOIN trials t ON t.id=r.trial_id WHERE t.account_id=? ORDER BY r.created_at DESC LIMIT 10", a.accountId);
       items = `<h2>Latest reports</h2><ul>${reps.map((x: any) =>
@@ -162,7 +169,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
         <label>Public key (PEM) <textarea name="public_key_pem" rows="4" required></textarea></label>
         <button type="submit">Register</button>
       </form>` : "";
-    return { html: page("Providers", a, `<table>${th("Name", "State", "Origin", "Key")}${rows.join("")}</table>${form}`) };
+    return { html: page("Providers", a, `${tbl(th("Name", "State", "Origin", "Key"), rows)}${form}`) };
   });
 
   r.post("/console/providers", (req) => {
@@ -198,7 +205,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
       </form>` : "";
     return { html: page(`Provider ${esc(p.name)}`, a,
       `<p>${badge(p.state)} · owner ${esc(p.owner_subject)} · origin ${esc(p.endpoint_origin)} · key ${esc(p.key_id)}</p>
-       <h2>Bindings</h2><table>${th("ID", "State", "Origin", "Key", "Expires")}${bindRows.join("")}</table>${actions}`) };
+       <h2>Bindings</h2>${tbl(th("ID", "State", "Origin", "Key", "Expires"), bindRows)}${actions}`) };
   });
 
   r.post("/console/providers/{id}/bind", async (req) => {
@@ -211,7 +218,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
     // Dev-assisted signing: verifies the pasted key matches the enrolled key.
     const probe = verifyEd25519(ch.signing_payload, signNow(ch.signing_payload, pem), p.public_key_pem);
     if (!probe) {
-      return { status: 422, html: page(`Provider ${esc(p.name)}`, a, `<p class="warn">Pasted private key does not match the enrolled public key.</p>`) };
+      return { status: 422, html: page(`Provider ${esc(p.name)}`, a, warnP("Pasted private key does not match the enrolled public key.")) };
     }
     await providers.submitBinding(ctx, a, p.id, {
       challenge_id: ch.challenge_id,
@@ -243,7 +250,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
         <label>Name <input name="name" required></label>
         <button type="submit">Create draft</button>
       </form>` : "";
-    return { html: page("Suites", a, `<table>${th("Name", "Version", "State", "Manifest")}${rows.join("")}</table>${form}`) };
+    return { html: page("Suites", a, `${tbl(th("Name", "Version", "State", "Manifest"), rows)}${form}`) };
   });
 
   r.post("/console/suites", (req) => {
@@ -293,7 +300,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
     return { html: page(`Suite ${esc(s.name)} v${s.version}`, a,
       `<p>${badge(s.state)} · manifest <code>${esc(s.manifest_hash || "unfrozen")}</code> · normalizer ${esc(s.normalizer_version)}</p>
        <h2>Samples (${view.samples.length})</h2>
-       <table>${th("Sample", "Content", "Label", "Processors", "Consent")}${sampleRows.join("")}</table>
+       ${tbl(th("Sample", "Content", "Label", "Processors", "Consent"), sampleRows)}
        ${actions}${correct}${newVersion}`) };
   });
 
@@ -369,7 +376,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
         <button type="submit">Create trial</button>
       </form>`;
     }
-    return { html: page("Trials", a, `<table>${th("ID", "Suite", "State", "Budget/Cap")}${rows.join("")}</table>${form}`) };
+    return { html: page("Trials", a, `${tbl(th("ID", "Suite", "State", "Budget/Cap"), rows)}${form}`) };
   });
 
   r.post("/console/trials", (req) => {
@@ -399,7 +406,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
     const cov = trials.trialCoverage(ctx, t.id);
     const rows = cov.providers.map((p: any) =>
       td(esc(p.provider_id), esc(p.coverage), String(p.accepted),
-        Object.entries(p.blocked_reasons).map(([k, v]) => `${k}:${v}`).join(", ") || "—"));
+        Object.entries(p.blocked_reasons).map(([k, v]) => `${esc(k)}:${esc(v)}`).join(", ") || "—"));
     const acts: string[] = [];
     if (a.role === "runner" && t.state === "planned")
       acts.push(`<form class="inline" method="post" action="/console/trials/${t.id}/run"><button>Run trial</button></form>`);
@@ -412,9 +419,9 @@ export function mountConsole(ctx: Ctx, r: Router): void {
     const reps = ctx.db.all("SELECT id FROM reports WHERE trial_id=? ORDER BY created_at", t.id);
     return { html: page(`Trial ${esc(t.id)}`, a, `
       <p>${badge(t.state)} · suite ${esc(t.suite_id)} v${t.suite_version} · manifest <code>${esc(t.manifest_hash.slice(0, 16))}</code> · budget ${t.budget_minor} ${esc(t.asset)} · cap ${t.per_provider_cap_minor}</p>
-      ${cov.exclusions.length ? `<p class="warn">Exclusions: ${cov.exclusions.map((e: any) => `${e.provider_id}/${e.sample_id ?? "*"} ${e.reason}`).join("; ")}</p>` : ""}
+      ${cov.exclusions.length ? warnP(`Exclusions: ${cov.exclusions.map((e: any) => `${esc(e.provider_id)}/${esc(e.sample_id ?? "*")} ${esc(e.reason)}`).join("; ")}`) : ""}
       <h2>Coverage</h2>
-      <table>${th("Provider", "Attempted/Scheduled", "Accepted", "Blocked reasons")}${rows.join("")}</table>
+      ${tbl(th("Provider", "Attempted/Scheduled", "Accepted", "Blocked reasons"), rows)}
       <p>${acts.join(" ")}</p>
       ${reps.length ? `<h2>Reports</h2><ul>${reps.map((x: any) => `<li><a href="/console/reports/${x.id}">${x.id}</a></li>`).join("")}</ul>` : ""}`) };
   });
@@ -450,7 +457,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
       "SELECT r.*, t.account_id FROM reports r JOIN trials t ON t.id=r.trial_id WHERE t.account_id=? ORDER BY r.created_at DESC",
       a.accountId,
     ).map((x: any) => td(`<a href="/console/reports/${x.id}">${x.id}</a>`, esc(x.trial_id), esc(x.created_at)));
-    return { html: page("Reports", a, `<table>${th("Report", "Trial", "Issued")}${rows.join("")}</table>`) };
+    return { html: page("Reports", a, tbl(th("Report", "Trial", "Issued"), rows)) };
   });
 
   r.get("/console/reports/{id}", (req) => {
@@ -467,7 +474,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
       `${p.spend_minor}¢`,
       fmtCost(p.cost_per_accepted_minor, p.cost_unknown_reason),
       `n=${p.latency.n} p50=${p.latency.p50 ?? "—"}ms p95=${p.latency.p95 ?? "—"}ms`,
-      Object.entries(p.errors).map(([k, v]) => `${esc(k)}:${v}`).join(", ") || "—",
+      Object.entries(p.errors).map(([k, v]) => `${esc(k)}:${esc(v)}`).join(", ") || "—",
       p.bindings.map((x: any) => `${esc(x.key_id)} exp ${esc(x.expires_at)}`).join("<br>") || "—",
       `<a href="/console/reports/${rep.id}/fields?provider_id=${encodeURIComponent(p.provider_id)}">fields</a>`,
     ));
@@ -482,15 +489,15 @@ export function mountConsole(ctx: Ctx, r: Router): void {
     }
     const comparison = b.comparison.ranked
       ? `<h2>Ranking</h2><ol>${b.comparison.ranked.map((x: any) => `<li>${esc(x.provider_id)} — ${x.cost_per_accepted_minor}¢/accepted</li>`).join("")}</ol>`
-      : `<p class="warn">Ordered comparison suppressed: ${esc(b.comparison.suppressed?.code ?? "n/a")}${
+      : warnP(`Ordered comparison suppressed: ${esc(b.comparison.suppressed?.code ?? "n/a")}${
           b.comparison.suppressed?.code === "min_observations"
             ? ` (requires ${b.comparison.suppressed.required}, observed ${b.comparison.suppressed.observed})`
-            : ""}.</p>`;
+            : ""}.`);
     return { html: page(`Report ${esc(rep.id)}`, a, `
       <p class="muted">trial ${esc(rep.trial_id)} · suite v${b.suite_version} · manifest <code>${esc(b.manifest_hash.slice(0, 16))}</code> ·
       evidence cursor ${b.asof_cursor} · window ${esc(b.run_window.first_dispatch ?? "—")} → ${esc(b.run_window.last_completion ?? "—")} · environment ${esc(b.environment)}</p>
-      ${warns.map((w) => `<p class="warn">${esc(w)}</p>`).join("")}
-      <table>${th("Provider", "Accepted/Attempted", "Fields", "Coverage", "Spend", "Cost/accepted", "Latency", "Errors", "Binding", "Detail")}${rows.join("")}</table>
+      ${warns.map((w) => warnP(esc(w))).join("")}
+      ${tbl(th("Provider", "Accepted/Attempted", "Fields", "Coverage", "Spend", "Cost/accepted", "Latency", "Errors", "Binding", "Detail"), rows)}
       ${comparison}
       <p><a href="/reports/${rep.id}/export?format=json">Export JSON</a> · <a href="/reports/${rep.id}/export?format=csv">Export CSV</a></p>`) };
   });
@@ -507,7 +514,7 @@ export function mountConsole(ctx: Ctx, r: Router): void {
         s.fields ? s.fields.map((f: any) => `${esc(f.field)}: ${esc(f.outcome)}`).join("<br>") : `<span class="muted">${esc(s.attempt_state)}</span>`));
     return { html: page(`Field evidence · ${esc(providerId)}`, a,
       `<p class="muted">Redacted field-level outcomes for report ${esc(rep.id)}. Label values stay buyer-side.</p>
-       <table>${th("Sample", "Attempt", "Accepted", "Field outcomes")}${rows.join("")}</table>`) };
+       ${tbl(th("Sample", "Attempt", "Accepted", "Field outcomes"), rows)}`) };
   });
 }
 
