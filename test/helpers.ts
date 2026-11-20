@@ -52,11 +52,16 @@ export interface ApiResult {
   body: string;
 }
 
-export function hdr(a: Actor): Record<string, string> {
+/** Resolved actor plus the member credential issued at enrollment. */
+export interface TestActor extends Actor {
+  credential: string;
+}
+
+export function hdr(a: { accountId: string; subject: string; credential: string }): Record<string, string> {
   return {
     "x-pt-account": a.accountId,
     "x-pt-subject": a.subject,
-    "x-pt-role": a.role,
+    "x-pt-credential": a.credential,
   };
 }
 
@@ -87,26 +92,25 @@ export async function api(
   return { status: res.status, json, body: text };
 }
 
-/** Creates an account + full set of role members for tests. */
-export async function makeAccount(port: number, name = "buyer"): Promise<Record<string, Actor>> {
+/** Creates an account + full set of role members, keeping their credentials. */
+export async function makeAccount(port: number, name = "buyer"): Promise<Record<string, TestActor>> {
   const r = await api(port, null, "POST", "/accounts", { name, bootstrap_subject: "lead" });
   const accountId = r.json.account_id;
-  const lead: Actor = { accountId, subject: "lead", role: "procurement_lead" };
+  const lead: TestActor = {
+    accountId, subject: "lead", role: "procurement_lead",
+    credential: r.json.bootstrap_credential,
+  };
+  const actors: Record<string, TestActor> = { lead };
   for (const [subject, role] of [
     ["steward", "dataset_steward"],
     ["operator", "provider_operator"],
     ["runner", "runner"],
     ["analyst", "analyst"],
   ] as const) {
-    await api(port, lead, "POST", `/accounts/${accountId}/members`, { subject, role });
+    const m = await api(port, lead, "POST", `/accounts/${accountId}/members`, { subject, role });
+    actors[subject] = { accountId, subject, role, credential: m.json.credential };
   }
-  return {
-    lead,
-    steward: { accountId, subject: "steward", role: "dataset_steward" },
-    operator: { accountId, subject: "operator", role: "provider_operator" },
-    runner: { accountId, subject: "runner", role: "runner" },
-    analyst: { accountId, subject: "analyst", role: "analyst" },
-  };
+  return actors;
 }
 
 /** Registers + binds a FakeProvider through the real challenge/binding flow. */

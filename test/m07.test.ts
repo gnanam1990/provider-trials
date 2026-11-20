@@ -24,8 +24,9 @@ test("T-013: rebuilding an issued report from its cursor is identical, even afte
   const fake = await new FakeProvider().start();
   let env = await startEnv({}, dbPath);
   let reportId: string;
+  let actors: any;
   try {
-    const actors = await makeAccount(env.port);
+    actors = await makeAccount(env.port);
     const pA = await bindProvider(env.port, actors.operator, fake, "A");
     fake.defaultFields = { ...LABELS };
     const suiteId = await makeFrozenSuite(env.port, actors, { n: 4, labels: LABELS });
@@ -43,14 +44,13 @@ test("T-013: rebuilding an issued report from its cursor is identical, even afte
   } finally {
     await env.close();
   }
-  // Process restart: fresh server over the same database file.
+  // Process restart: fresh server over the same database file. The enrolled
+  // member credential still authenticates — it survives in the file database.
   const env2 = await startEnv({}, dbPath);
   try {
-    const m = env2.db.get<any>("SELECT account_id, subject, role FROM members LIMIT 1");
-    const member = { accountId: m.account_id, subject: m.subject, role: m.role };
-    const r2 = await api(env2.port, member as any, "GET", `/reports/${reportId}`);
+    const r2 = await api(env2.port, actors.lead, "GET", `/reports/${reportId}`);
     assert.equal(r2.status, 200);
-    const rb2 = await api(env2.port, member as any, "POST", `/reports/${reportId}/rebuild`);
+    const rb2 = await api(env2.port, actors.lead, "POST", `/reports/${reportId}/rebuild`);
     assert.equal(rb2.json.identical, true);
     assert.equal(r2.json.report.body.manifest_hash.length, 64);
   } finally {

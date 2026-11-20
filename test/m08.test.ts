@@ -7,11 +7,11 @@ const LABELS = { date: "2026-01-15", tax: "1.50", total: "11.50" };
 const CONTENTS = [1, 2, 3, 4].map((i) => `INVOICE ${i} தமிழ்`);
 const key = (i: number) => sha256hex(CONTENTS[i]).slice(0, 12);
 
-async function consoleLogin(port: number, accountId: string, subject: string, role: string): Promise<string> {
+async function consoleLogin(port: number, a: { accountId: string; subject: string; credential: string }): Promise<string> {
   const res = await fetch(`http://127.0.0.1:${port}/console/login`, {
     method: "POST",
     headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({ account_id: accountId, subject, role }).toString(),
+    body: new URLSearchParams({ account_id: a.accountId, subject: a.subject, credential: a.credential }).toString(),
     redirect: "manual",
   });
   const cookie = res.headers.get("set-cookie") ?? "";
@@ -96,7 +96,7 @@ test("T-015 + T-016: acceptance scene renders 4 vs 5 cents, 4/4 coverage, suppre
     assert.equal(anon.location, "/console/login");
 
     // Analyst session renders the comparison rows with evidence qualifiers.
-    const cookie = await consoleLogin(env.port, actors.analyst.accountId, "analyst", "analyst");
+    const cookie = await consoleLogin(env.port, actors.analyst);
     const page = await getHtml(env.port, `/console/reports/${rep.json.report.id}`, cookie);
     assert.equal(page.status, 200);
     assert.match(page.body, /4¢/);
@@ -115,7 +115,7 @@ test("T-015 + T-016: acceptance scene renders 4 vs 5 cents, 4/4 coverage, suppre
 
     // A different tenant's analyst gets nothing.
     const other = await makeAccount(env.port, "other");
-    const otherCookie = await consoleLogin(env.port, other.analyst.accountId, "analyst", "analyst");
+    const otherCookie = await consoleLogin(env.port, other.analyst);
     const denied = await getHtml(env.port, `/console/reports/${rep.json.report.id}`, otherCookie);
     assert.equal(denied.status, 404);
   } finally {

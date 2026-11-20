@@ -1,7 +1,7 @@
 import type { Ctx } from "./context.ts";
 import type { Req } from "./lib/router.ts";
 import { forbidden, unauthorized } from "./lib/errors.ts";
-import { hmacSign } from "./lib/util.ts";
+import { hmacSign, sha256hex } from "./lib/util.ts";
 
 export type Role =
   | "procurement_lead"
@@ -25,28 +25,35 @@ export interface Actor {
 }
 
 /**
- * Identity comes from x-pt-account / x-pt-subject / x-pt-role headers, or from
- * the signed console session cookie. Membership is always verified against the
- * members table — role claims in headers alone are never trusted.
+ * Identity is authenticated, never asserted. Programmatic callers send
+ * x-pt-account / x-pt-subject / x-pt-credential; the credential is verified
+ * against the member's stored hash and the role comes from that member row —
+ * a role header alone is never trusted. Browser calls carry the signed
+ * session cookie, which is only minted after the same credential check and is
+ * re-verified against membership on every request.
  */
 export function resolveActor(ctx: Ctx, req: Req): Actor | null {
-  let accountId = header(req, "x-pt-account");
-  let subject = header(req, "x-pt-subject");
-  let role = header(req, "x-pt-role");
-  if (!accountId || !subject || !role) {
-    const session = readSession(ctx, req);
-    if (session) ({ accountId, subject, role } = session);
+  const accountId = header(req, "x-pt-account");
+  const subject = header(req, "x-pt-subject");
+  const credential = header(req, "x-pt-credential");
+  if (accountId && subject && credential) {
+    const m = ctx.db.get<{ role: Role }>(
+      "SELECT role FROM members WHERE account_id=? AND subject=? AND credential_hash=?",
+      accountId,
+      subject,
+      sha256hex(credential),
+    );
+    return m ? { accountId, subject, role: m.role } : null;
   }
-  if (!accountId || !subject || !role) return null;
-  if (!ROLES.includes(role as Role)) return null;
+  const session = readSession(ctx, req);
+  if (!session) return null;
   const m = ctx.db.get(
     "SELECT 1 AS ok FROM members WHERE account_id=? AND subject=? AND role=?",
-    accountId,
-    subject,
-    role,
+    session.accountId,
+    session.subject,
+    session.role,
   );
-  if (!m) return null;
-  return { accountId, subject, role: role as Role };
+  return m ? session : null;
 }
 
 export function requireActor(ctx: Ctx, req: Req): Actor {

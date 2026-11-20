@@ -47,7 +47,9 @@ const rep = await api(env.port, actors.analyst, "POST", `/trials/${trialId}/repo
 console.log(`console:  http://127.0.0.1:${env.port}/console`);
 console.log(`report:   http://127.0.0.1:${env.port}/console/reports/${rep.json.report.id}`);
 console.log(`trial:    ${trialId}`);
-console.log(`login:    account_id=${actors.analyst.accountId} subject=analyst role=analyst`);
+console.log(`providerA: ${pA}`);
+console.log(`login:    account_id=${actors.analyst.accountId} subject=analyst credential=${actors.analyst.credential}`);
+console.log(`shots:    node tools/shot-console.mjs http://127.0.0.1:${env.port} ${actors.analyst.accountId} analyst ${actors.analyst.credential} ${rep.json.report.id} ${trialId} ${pA}`);
 console.log("(waiting — Ctrl-C to stop)");
 process.on("SIGINT", async () => { await fakeA.stop(); await fakeB.stop(); await env.close(); process.exit(0); });
 setInterval(() => {}, 60_000);

@@ -108,6 +108,25 @@
         "T-015 report renders 4c vs 5c, 4/4 coverage, small-sample warnings in API+HTML. T-016 ranking suppressed min_observations. Tenant isolation 404. Full suite: 17 tests exit 0"
       ],
       "nextAction": "complete"
+    },
+    {
+      "id": "H-SEC",
+      "title": "Identity and console hardening (acceptance review fixes)",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/auth-hardening.test.ts",
+        "npm test"
+      ],
+      "evidence": [
+        "H-01 credential-verified API identity; role headers ignored; wrong/missing credential 401",
+        "H-02 credential login required; demo picker gated by PT_DEMO both directions",
+        "H-03 console bind is signature-only; private_key_pem -> private_key_not_accepted; provider reaches bound",
+        "H-04 no shared compile-time session secret; random per boot unless PT_HMAC_SECRET",
+        "Browser proof via real login form (keyboard), real link navigation, focus traversal, 320px checks - tools/shot-console.mjs, BROWSER.md",
+        "Full suite: 21 tests exit 0"
+      ],
+      "nextAction": "complete"
     }
   ],
   "evidence": {

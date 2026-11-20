@@ -1,8 +1,7 @@
-import crypto from "node:crypto";
 import type { Ctx } from "../context.ts";
 import { Router } from "../lib/router.ts";
 import type { Req, Resp } from "../lib/router.ts";
-import { makeSessionCookie, requireActor } from "../auth.ts";
+import { makeSessionCookie, requireActor, requireRole } from "../auth.ts";
 import type { Actor } from "../auth.ts";
 import { badRequest, notFound } from "../lib/errors.ts";
 import * as providers from "../domain/providers.ts";
@@ -10,7 +9,7 @@ import * as suites from "../domain/suites.ts";
 import * as trials from "../domain/trials.ts";
 import * as reports from "../domain/reports.ts";
 import * as execution from "../domain/execution.ts";
-import { verifyEd25519 } from "../lib/util.ts";
+import { sha256hex } from "../lib/util.ts";
 
 const esc = (s: unknown): string =>
   String(s ?? "").replace(/[&<>"']/g, (c) =>
@@ -84,35 +83,59 @@ export function mountConsole(ctx: Ctx, r: Router): void {
 
   r.get("/", () => go("/console"));
 
-  r.get("/console/login", () => ({
-    html: page("Sign in", null, `
-      <p class="muted">Local development console: select an enrolled member identity.</p>
+  r.get("/console/login", () => {
+    const demo = ctx.config.demoMode
+      ? `<h2>Local demo only</h2>
+         <p class="muted">This shortcut exists because <code>PT_DEMO=1</code> is set; it is not part of the normal flow.</p>
+         <form method="post" action="/console/login">
+           <label>Demo member <select name="demo_member">${
+             ctx.db.all<any>("SELECT account_id, subject, role FROM members ORDER BY account_id, subject")
+               .map((m) => `<option value="${esc(m.account_id)}|${esc(m.subject)}|${esc(m.role)}">${esc(m.account_id)} · ${esc(m.subject)} · ${esc(m.role)}</option>`)
+               .join("")
+           }</select></label>
+           <button type="submit">Sign in without credential</button>
+         </form>`
+      : "";
+    return {
+      html: page("Sign in", null, `
+      <p class="muted">Sign in with the member credential issued at enrollment.</p>
       <form method="post" action="/console/login">
-        <label>Account <input name="account_id" required autofocus></label>
-        <label>Subject <input name="subject" required></label>
-        <label>Role
-          <select name="role">
-            <option>procurement_lead</option><option>dataset_steward</option>
-            <option>provider_operator</option><option>runner</option><option>analyst</option>
-          </select></label>
+        <label>Account <input name="account_id" required autofocus autocomplete="off"></label>
+        <label>Subject <input name="subject" required autocomplete="off"></label>
+        <label>Credential <input name="credential" type="password" required autocomplete="off"></label>
         <button type="submit">Sign in</button>
-      </form>`),
-  }));
+      </form>${demo}`),
+    };
+  });
 
   r.post("/console/login", (req) => {
-    const { account_id, subject, role } = req.body ?? {};
-    const m = ctx.db.get(
-      "SELECT 1 x FROM members WHERE account_id=? AND subject=? AND role=?",
-      account_id, subject, role,
-    );
-    if (!m) {
-      return { status: 403, html: page("Sign in", null, `${warnP("No such member/role in that account.")}<p><a href="/console/login">Back</a></p>`) };
+    const { account_id, subject, credential, demo_member } = req.body ?? {};
+    const failed = (msg: string) => ({
+      status: 403,
+      html: page("Sign in", null, `${warnP(msg)}<p><a href="/console/login">Back</a></p>`),
+    });
+    let member: { account_id: string; subject: string; role: Actor["role"] } | undefined;
+    if (demo_member) {
+      if (!ctx.config.demoMode) return failed("Demo shortcuts are disabled; sign in with a member credential.");
+      const [dAcct, dSubj, dRole] = String(demo_member).split("|");
+      member = ctx.db.get(
+        "SELECT account_id, subject, role FROM members WHERE account_id=? AND subject=? AND role=?",
+        dAcct, dSubj, dRole,
+      );
+    } else if (account_id && subject && credential) {
+      member = ctx.db.get(
+        "SELECT account_id, subject, role FROM members WHERE account_id=? AND subject=? AND credential_hash=?",
+        String(account_id), String(subject), sha256hex(String(credential)),
+      );
     }
+    if (!member) return failed("Invalid account, subject or credential.");
     return {
       status: 303,
       headers: {
         location: "/console",
-        "set-cookie": makeSessionCookie(ctx, { accountId: account_id, subject, role }),
+        "set-cookie": makeSessionCookie(ctx, {
+          accountId: member.account_id, subject: member.subject, role: member.role,
+        }),
       },
       text: "",
     };
@@ -189,13 +212,30 @@ export function mountConsole(ctx: Ctx, r: Router): void {
     const binds = ctx.db.all<any>("SELECT * FROM bindings WHERE provider_id=? ORDER BY created_at", p.id);
     const bindRows = binds.map((b) =>
       td(esc(b.id), badge(b.state), esc(b.origin), esc(b.key_id), esc(b.expires_at)));
-    const actions = a.role === "provider_operator" && p.owner_subject === a.subject ? `
-      <h2>Enroll / rebind (dev-assisted signing)</h2>
-      <p class="muted">The console issues a challenge, signs it with the pasted private key and submits the binding — the same dual proof as the API. In production the provider signs and hosts the nonce itself.</p>
+    const chId = req.query.get("challenge");
+    const ch = chId
+      ? ctx.db.get<any>("SELECT * FROM challenges WHERE id=? AND provider_id=?", chId, p.id)
+      : null;
+    const challengeBlock = ch ? `
+      <h3>Challenge ${esc(ch.id)}</h3>
+      <p class="muted">Your origin must serve nonce <code>${esc(ch.nonce)}</code> at
+      <code>${esc(ch.origin)}/.well-known/provider-trials/nonce</code> until ${esc(ch.expires_at)}.
+      ${ch.used_at ? "This challenge is already consumed — issue a new one." : ""}</p>
+      <p>Sign this exact payload with the enrolled private key:</p>
+      <pre>${esc(providers.signingPayload(ch.nonce, ch.origin, p.key_id, ch.expires_at))}</pre>
+      <p class="muted">Example: <code>openssl pkeyutl -sign -inkey key.pem -rawin -in payload.txt | base64</code></p>
+      ${ch.used_at ? "" : `
       <form method="post" action="/console/providers/${p.id}/bind">
-        <label>Private key (PEM) <textarea name="private_key_pem" rows="4" required></textarea></label>
-        <button type="submit">Prove ownership &amp; bind</button>
-      </form>
+        <input type="hidden" name="challenge_id" value="${esc(ch.id)}">
+        <label>Signature (base64url) <textarea name="signature" rows="3" required></textarea></label>
+        <button type="submit">Submit signature</button>
+      </form>`}`
+      : "";
+    const actions = a.role === "provider_operator" && p.owner_subject === a.subject ? `
+      <h2>Prove ownership &amp; bind</h2>
+      <p class="muted">Issue a challenge, sign the payload locally with your own key tooling, and paste only the signature. Private keys are never sent to or stored by this service.</p>
+      <form class="inline" method="post" action="/console/providers/${p.id}/challenge"><button>Issue challenge</button></form>
+      ${challengeBlock}
       <h2>Rotate key/origin</h2>
       <form method="post" action="/console/providers/${p.id}/rotate">
         <label>New origin (optional) <input name="endpoint_origin"></label>
@@ -208,27 +248,36 @@ export function mountConsole(ctx: Ctx, r: Router): void {
        <h2>Bindings</h2>${tbl(th("ID", "State", "Origin", "Key", "Expires"), bindRows)}${actions}`) };
   });
 
-  r.post("/console/providers/{id}/bind", async (req) => {
+  r.post("/console/providers/{id}/challenge", (req) => {
     const a = actor(ctx, req);
+    requireRole(a, "provider_operator");
     const p = providers.getProvider(ctx, req.params.id);
     if (p.account_id !== a.accountId) throw notFound("provider");
-    const pem = req.body?.private_key_pem;
-    if (!pem) throw badRequest("missing_fields", "private_key_pem required");
     const ch = providers.createChallenge(ctx, a, p.id);
-    // Dev-assisted signing: verifies the pasted key matches the enrolled key.
-    const probe = verifyEd25519(ch.signing_payload, signNow(ch.signing_payload, pem), p.public_key_pem);
-    if (!probe) {
-      return { status: 422, html: page(`Provider ${esc(p.name)}`, a, warnP("Pasted private key does not match the enrolled public key.")) };
+    return go(`/console/providers/${p.id}?challenge=${ch.challenge_id}`);
+  });
+
+  r.post("/console/providers/{id}/bind", async (req) => {
+    const a = actor(ctx, req);
+    requireRole(a, "provider_operator");
+    const p = providers.getProvider(ctx, req.params.id);
+    if (p.account_id !== a.accountId) throw notFound("provider");
+    if (req.body?.private_key_pem) {
+      throw badRequest(
+        "private_key_not_accepted",
+        "Private keys are never accepted by this service; sign the challenge locally and submit only the signature.",
+      );
     }
     await providers.submitBinding(ctx, a, p.id, {
-      challenge_id: ch.challenge_id,
-      signature: signNow(ch.signing_payload, pem),
+      challenge_id: req.body?.challenge_id,
+      signature: req.body?.signature,
     });
     return go(`/console/providers/${p.id}`);
   });
 
   r.post("/console/providers/{id}/rotate", (req) => {
     const a = actor(ctx, req);
+    requireRole(a, "provider_operator");
     const b = req.body ?? {};
     providers.rotateProvider(ctx, a, req.params.id, {
       endpoint_origin: b.endpoint_origin || undefined,
@@ -516,9 +565,4 @@ export function mountConsole(ctx: Ctx, r: Router): void {
       `<p class="muted">Redacted field-level outcomes for report ${esc(rep.id)}. Label values stay buyer-side.</p>
        ${tbl(th("Sample", "Attempt", "Accepted", "Field outcomes"), rows)}`) };
   });
-}
-
-// Sign a payload with a pasted PEM (console dev-assist only).
-function signNow(payload: string, pem: string): string {
-  return crypto.sign(null, Buffer.from(payload, "utf8"), pem).toString("base64url");
 }

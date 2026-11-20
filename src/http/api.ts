@@ -31,8 +31,8 @@ export function buildApi(ctx: Ctx): Router {
     const a = requireActor(ctx, req);
     if (a.accountId !== req.params.id) throw notFound("account");
     requireRole(a, "procurement_lead");
-    accounts.addMember(ctx, a, req.body ?? {});
-    return { status: 201, json: { ok: true } };
+    const out = accounts.addMember(ctx, a, req.body ?? {});
+    return { status: 201, json: out };
   });
 
   r.post("/providers", (req) => {

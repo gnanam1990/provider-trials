@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import { Db } from "./db.ts";
 
 export interface Config {
@@ -7,6 +8,8 @@ export interface Config {
   hmacSecret: string;
   /** Public origin of this service, used to build signed sample URLs. */
   selfOrigin: string;
+  /** Explicitly enabled local-demo shortcuts; never on by default. */
+  demoMode: boolean;
   challengeTtlMs: number;
   bindingTtlMs: number;
   signedUrlTtlMs: number;
@@ -17,8 +20,11 @@ export interface Config {
 export function defaultConfig(env: NodeJS.ProcessEnv = process.env): Config {
   return {
     allowedHosts: (env.PT_ALLOWED_HOSTS ?? "127.0.0.1,localhost,::1").split(",").map((s) => s.trim()),
-    hmacSecret: env.PT_HMAC_SECRET ?? "dev-only-hmac-secret",
+    // No shared default: set PT_HMAC_SECRET for stable sessions across restarts,
+    // otherwise a fresh per-boot secret invalidates sessions on restart.
+    hmacSecret: env.PT_HMAC_SECRET ?? crypto.randomBytes(24).toString("base64url"),
     selfOrigin: env.PT_SELF_ORIGIN ?? "http://127.0.0.1:8787",
+    demoMode: env.PT_DEMO === "1",
     challengeTtlMs: Number(env.PT_CHALLENGE_TTL_MS ?? 5 * 60_000),
     bindingTtlMs: Number(env.PT_BINDING_TTL_MS ?? 24 * 3600_000),
     signedUrlTtlMs: Number(env.PT_SIGNED_URL_TTL_MS ?? 10 * 60_000),

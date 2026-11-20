@@ -227,4 +227,9 @@ CREATE TABLE idempotency_keys(
 );
 `,
   },
+  {
+    version: 2,
+    name: "member_credentials",
+    sql: `ALTER TABLE members ADD COLUMN credential_hash TEXT;`,
+  },
 ];
