@@ -1,0 +1,144 @@
+{
+  "project": "Provider Trials",
+  "packVersion": "1.0",
+  "testedSha": "ee36326",
+  "targetBranch": "devin/provider-trials",
+  "modules": [
+    {
+      "id": "M01",
+      "title": "Endpoint ownership",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m01.test.ts"
+      ],
+      "evidence": [
+        "T-001 binding valid via dual proof; T-002 wrong-origin nonce rejected + replay blocked. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "M02",
+      "title": "Consent and suite freezing",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m02.test.ts"
+      ],
+      "evidence": [
+        "T-003 label correction -> new version, different manifest; frozen edit 409. T-004 consent exclusion denies URL issuance, forged sig and unsigned access. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "M03",
+      "title": "Budgeted experiment scheduling",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m03.test.ts"
+      ],
+      "evidence": [
+        "T-005 8 unique cells, idempotent replay + conflict. T-006 expiry blocks cells, coverage 0/4 vs 4/4, rebind re-enrols. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "M04",
+      "title": "Paid execution and receipt matching",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m04.test.ts"
+      ],
+      "evidence": [
+        "T-007 retry adds 3c, cell count unchanged, trial completes. T-008 timeout -> uncertain, no auto-retry, cost NULL. Extra: settled-after-timeout reconciles same invocation. 3 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "M05",
+      "title": "Typed scoring and acceptance",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m05.test.ts"
+      ],
+      "evidence": [
+        "T-009 11/12 fields -> 3 accepted, amount_mismatch on total. T-010 ambiguous date -> date_ambiguous + disallowed format rejected, e2e + unit. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "M06",
+      "title": "Comparison reports",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m06.test.ts"
+      ],
+      "evidence": [
+        "T-011 12c/3 accepted -> exactly 4c, coverage 4/4, small-sample warning, ranking suppressed. T-012 unverified receipt -> cost_state unknown, cost_per_accepted null. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "M07",
+      "title": "Audit, freshness and reruns",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m07.test.ts"
+      ],
+      "evidence": [
+        "T-013 byte-identical rebuild after file-db restart. T-014 label correction + rotation leave report untouched, new evidence pins new binding. Extra: rerun/curve/export/tenant isolation. 3 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "M08",
+      "title": "Buyer workflow and acceptance proof",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/m08.test.ts",
+        "npm test"
+      ],
+      "evidence": [
+        "T-015 report renders 4c vs 5c, 4/4 coverage, small-sample warnings in API+HTML. T-016 ranking suppressed min_observations. Tenant isolation 404. Full suite: 17 tests exit 0"
+      ],
+      "nextAction": "complete"
+    },
+    {
+      "id": "H-SEC",
+      "title": "Identity and console hardening (acceptance review fixes)",
+      "state": "accepted",
+      "owner": null,
+      "commands": [
+        "node --test test/auth-hardening.test.ts",
+        "npm test"
+      ],
+      "evidence": [
+        "H-01 credential-verified API identity; role headers ignored; wrong/missing credential 401",
+        "H-02 credential login required; demo picker gated by PT_DEMO both directions",
+        "H-03 console bind is signature-only; private_key_pem -> private_key_not_accepted; provider reaches bound",
+        "H-04 no shared compile-time session secret; random per boot unless PT_HMAC_SECRET",
+        "Browser proof via real login form (keyboard), real link navigation, focus traversal, 320px checks - tools/shot-console.mjs, BROWSER.md",
+        "Full suite: 21 tests exit 0"
+      ],
+      "nextAction": "complete"
+    }
+  ],
+  "evidence": {
+    "fullSuite": "npm test -> 17 tests, exit 0",
+    "packCheck": "node docs/build-pack/tools/check-build-pack.mjs --root docs/build-pack -> no errors",
+    "cleanCheckout": "git clone --template=\"\" -> npm test -> 17/17 exit 0 at 683304b",
+    "rendered": "build-progress/provider-trials/shots (desktop/tablet/phone) via tools/shot-console.mjs",
+    "liveSmoke": "npm start -> /health 200, /console -> 303 login"
+  },
+  "externalDependencies": [
+    "live OCR provider endpoints (emulated only; missing real binding + signed receipt)",
+    "real consented Tamil invoice corpus (synthetic samples only)",
+    "Kite Passport/x402 paid execution and settlement (prohibited this run; no verified payment evidence)"
+  ]
+}
