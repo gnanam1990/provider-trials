@@ -7,6 +7,7 @@ import * as providers from "../domain/providers.ts";
 import * as suites from "../domain/suites.ts";
 import * as trials from "../domain/trials.ts";
 import * as execution from "../domain/execution.ts";
+import * as reports from "../domain/reports.ts";
 import { runIdempotent } from "../idempotency.ts";
 
 export function buildApi(ctx: Ctx): Router {
@@ -255,6 +256,46 @@ export function buildApi(ctx: Ctx): Router {
     requireRole(a, "runner");
     const out = await execution.drainOutbox(ctx);
     return { json: out };
+  });
+
+  r.post("/trials/{id}/reports", (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "analyst", "procurement_lead");
+    const rep = reports.issueReport(ctx, a, req.params.id);
+    return { status: 201, json: { report: rep } };
+  });
+
+  r.get("/trials/{id}/reports", (req) => {
+    const a = requireActor(ctx, req);
+    const t = trials.getTrial(ctx, req.params.id);
+    if (t.account_id !== a.accountId) throw notFound("trial");
+    return { json: { reports: reports.listReports(ctx, t.id) } };
+  });
+
+  r.get("/reports/{id}", (req) => {
+    const a = requireActor(ctx, req);
+    const rep = reports.getReport(ctx, req.params.id);
+    const t = trials.getTrial(ctx, rep.trial_id);
+    if (t.account_id !== a.accountId) throw notFound("report");
+    return { json: { report: rep } };
+  });
+
+  r.get("/reports/{id}/fields", (req) => {
+    const a = requireActor(ctx, req);
+    const rep = reports.getReport(ctx, req.params.id);
+    const t = trials.getTrial(ctx, rep.trial_id);
+    if (t.account_id !== a.accountId) throw notFound("report");
+    const providerId = req.query.get("provider_id") ?? "";
+    return { json: reports.reportFieldEvidence(ctx, rep, providerId) };
+  });
+
+  r.post("/reports/{id}/rebuild", (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "analyst", "procurement_lead");
+    const rep = reports.getReport(ctx, req.params.id);
+    const t = trials.getTrial(ctx, rep.trial_id);
+    if (t.account_id !== a.accountId) throw notFound("report");
+    return { json: reports.rebuildReport(ctx, rep.id) };
   });
 
   return r;
