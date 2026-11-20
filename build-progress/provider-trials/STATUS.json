@@ -33,11 +33,15 @@
     {
       "id": "M03",
       "title": "Budgeted experiment scheduling",
-      "state": "pending",
+      "state": "accepted",
       "owner": null,
-      "commands": [],
-      "evidence": [],
-      "nextAction": "Expand the provider-by-sample matrix, reserve per-provider authorized spend and enforce bounded dispatch concurrency. Store completion, quota and timeout reasons separately."
+      "commands": [
+        "node --test test/m03.test.ts"
+      ],
+      "evidence": [
+        "T-005 8 unique cells, idempotent replay + conflict. T-006 expiry blocks cells, coverage 0/4 vs 4/4, rebind re-enrols. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
     },
     {
       "id": "M04",

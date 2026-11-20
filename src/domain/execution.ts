@@ -349,9 +349,16 @@ export async function retryCell(
     throw conflict("cell_not_retryable", `cell is ${cell.state}; only failed/uncertain cells may be retried`);
   }
   setCell(ctx, { trial_id: trialId, provider_id: providerId, sample_id: sampleId }, "reserved");
+  ctx.db.run("UPDATE trials SET state='running', finished_at=NULL WHERE id=? AND state IN ('partial','complete')", trialId);
   audit(ctx, actor, "cell.retry", "cell_reserved_for_retry", "cell",
     `${trialId}/${providerId}/${sampleId}`);
-  return dispatchCell(ctx, { trial_id: trialId, provider_id: providerId, sample_id: sampleId }, adapter);
+  const outcome = await dispatchCell(
+    ctx,
+    { trial_id: trialId, provider_id: providerId, sample_id: sampleId },
+    adapter,
+  );
+  maybeFinalizeTrial(ctx, trialId);
+  return outcome;
 }
 
 /**

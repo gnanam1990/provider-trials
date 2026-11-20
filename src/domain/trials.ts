@@ -256,7 +256,7 @@ export function trialCoverage(ctx: Ctx, trialId: string) {
 /** Terminal-cell check after each drain; sets complete/partial. */
 export function maybeFinalizeTrial(ctx: Ctx, trialId: string): void {
   const trial = ctx.db.get<any>("SELECT * FROM trials WHERE id=?", trialId);
-  if (!trial || trial.state !== "running") return;
+  if (!trial || (trial.state !== "running" && trial.state !== "partial")) return;
   const open = ctx.db.get<any>(
     "SELECT COUNT(*) n FROM cells WHERE trial_id=? AND state IN ('planned','reserved','dispatched')",
     trialId,
