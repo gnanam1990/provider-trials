@@ -46,11 +46,15 @@
     {
       "id": "M04",
       "title": "Paid execution and receipt matching",
-      "state": "pending",
+      "state": "accepted",
       "owner": null,
-      "commands": [],
-      "evidence": [],
-      "nextAction": "Build OCR adapter contracts and receipt capture, bind transport and credential use to the declared provider, and record receipt provenance and attempt latency."
+      "commands": [
+        "node --test test/m04.test.ts"
+      ],
+      "evidence": [
+        "T-007 retry adds 3c, cell count unchanged, trial completes. T-008 timeout -> uncertain, no auto-retry, cost NULL. Extra: settled-after-timeout reconciles same invocation. 3 tests exit 0"
+      ],
+      "nextAction": "complete"
     },
     {
       "id": "M05",
