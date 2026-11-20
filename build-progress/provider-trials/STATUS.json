@@ -1,7 +1,7 @@
 {
   "project": "Provider Trials",
   "packVersion": "1.0",
-  "testedSha": null,
+  "testedSha": "204573a",
   "targetBranch": "devin/provider-trials",
   "modules": [
     {
@@ -109,5 +109,17 @@
       ],
       "nextAction": "complete"
     }
+  ],
+  "evidence": {
+    "fullSuite": "npm test -> 17 tests, exit 0",
+    "packCheck": "node docs/build-pack/tools/check-build-pack.mjs --root docs/build-pack -> no errors",
+    "cleanCheckout": "git clone --template=\"\" -> npm test -> 17/17 exit 0 at 683304b",
+    "rendered": "build-progress/provider-trials/shots (desktop/tablet/phone) via tools/shot-console.mjs",
+    "liveSmoke": "npm start -> /health 200, /console -> 303 login"
+  },
+  "externalDependencies": [
+    "live OCR provider endpoints (emulated only; missing real binding + signed receipt)",
+    "real consented Tamil invoice corpus (synthetic samples only)",
+    "Kite Passport/x402 paid execution and settlement (prohibited this run; no verified payment evidence)"
   ]
 }

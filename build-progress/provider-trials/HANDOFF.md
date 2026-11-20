@@ -3,7 +3,7 @@
 Initial state at intake: specification-only pack under `docs/build-pack/`; no product code existed. Dedicated greenfield repo, branch `devin/provider-trials`.
 
 - Target repository / branch: this checkout, `devin/provider-trials`.
-- Tested SHA: `683304b` (M08 commit) + working-tree polish committed on top; see `git log`.
+- Tested SHA: `204573a`.
 - Stack: Node >=22.18 native type-stripped TypeScript (zero npm deps), `node:sqlite` storage (see DECISION-sqlite.md), `node:test`, Ed25519 via `node:crypto`, server-rendered console. `FakeProvider` emulator stands in for paid OCR rails.
 - Entry points: `npm start` (API + console on `PT_PORT`, default 8787; `PT_DB` selects the sqlite file), `npm test` (17 tests), `node tools/demo-acceptance.mjs` (seeded demo instance), `node tools/shot-console.mjs <base> <accountId> <reportId> <trialId> <providerId>` (headless-Chrome rendered captures).
 
