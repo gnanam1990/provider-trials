@@ -1,7 +1,7 @@
 {
   "project": "Provider Trials",
   "packVersion": "1.0",
-  "testedSha": "204573a",
+  "testedSha": "b9be7d4",
   "targetBranch": "devin/provider-trials",
   "modules": [
     {
