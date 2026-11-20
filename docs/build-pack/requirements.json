@@ -1,0 +1,355 @@
+{
+  "schemaVersion": 1,
+  "status": "SPECIFICATION_ONLY",
+  "definitions": {
+    "functional": [
+      {
+        "id": "FR-01",
+        "title": "Endpoint ownership",
+        "definition": "Implement dual proof via key signature and a domain-served nonce, verify exact origin and time window, persist attestation expiry and rotation."
+      },
+      {
+        "id": "FR-02",
+        "title": "Consent and suite freezing",
+        "definition": "Import consented redacted invoices, create buyer-only truth records, document allowed processors and hash a versioned sample manifest and normalization configuration."
+      },
+      {
+        "id": "FR-03",
+        "title": "Budgeted experiment scheduling",
+        "definition": "Expand the provider-by-sample matrix, reserve per-provider authorized spend and enforce bounded dispatch concurrency. Store completion, quota and timeout reasons separately."
+      },
+      {
+        "id": "FR-04",
+        "title": "Paid execution and receipt matching",
+        "definition": "Build OCR adapter contracts and receipt capture, bind transport and credential use to the declared provider, and record receipt provenance and attempt latency."
+      },
+      {
+        "id": "FR-05",
+        "title": "Typed scoring and acceptance",
+        "definition": "Implement manifest-pinned Unicode, monetary and date normalization, mandatory-field acceptance, timeout handling and interpretable field errors."
+      },
+      {
+        "id": "FR-06",
+        "title": "Comparison reports",
+        "definition": "Generate buyer-private reports with workload, dated sample size, confusion details, cost per accepted invoice, latency percentiles with sample count, and coverage thresholds."
+      },
+      {
+        "id": "FR-07",
+        "title": "Audit, freshness and reruns",
+        "definition": "Add curve of quality over suite versions, opt-in recurring trials, results export, role-scoped evidence and read-only reconstruction from frozen records."
+      },
+      {
+        "id": "FR-08",
+        "title": "Buyer workflow and acceptance proof",
+        "definition": "Build the procurement-to-report UI with consent and cap review, coverage filters, small-sample notices and the two-provider acceptance scenario. Exercise API plus browser from clean storage."
+      }
+    ],
+    "nonfunctional": [
+      {
+        "id": "NFR-01",
+        "title": "Replayable evidence",
+        "definition": "A reviewer can reproduce the outcome from the exact input revision, actor scope, persisted decision and redacted evidence reference after a process restart."
+      }
+    ],
+    "invariants": [
+      {
+        "id": "INV-01",
+        "title": "Endpoint ownership",
+        "definition": "Both endpoint control and the enrolled principal must match the same nonce and origin."
+      },
+      {
+        "id": "INV-02",
+        "title": "Consent and suite freezing",
+        "definition": "A running trial cannot observe edits to its labels or processor permissions silently."
+      },
+      {
+        "id": "INV-03",
+        "title": "Budgeted experiment scheduling",
+        "definition": "Each provider sees the same frozen sample set; unanswered planned samples remain visible."
+      },
+      {
+        "id": "INV-04",
+        "title": "Paid execution and receipt matching",
+        "definition": "Every reported cost maps to a verified charge for the corresponding trial; uncertainty is explicit."
+      },
+      {
+        "id": "INV-05",
+        "title": "Typed scoring and acceptance",
+        "definition": "Measure extraction against buyer-approved typed labels with fixed denominators."
+      },
+      {
+        "id": "INV-06",
+        "title": "Comparison reports",
+        "definition": "Reports with zero accepted invoices have undefined unit cost; suppressed comparison must explain why."
+      },
+      {
+        "id": "INV-07",
+        "title": "Audit, freshness and reruns",
+        "definition": "Comparisons across different suites or scoring rules cannot appear as a like-for-like trend."
+      },
+      {
+        "id": "INV-08",
+        "title": "Buyer workflow and acceptance proof",
+        "definition": "Every displayed provider claim includes workload, relevant date, observed sample count and evidence scope."
+      }
+    ]
+  },
+  "tests": [
+    {
+      "id": "T-001",
+      "title": "Endpoint ownership • expected behavior",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-002",
+      "title": "Endpoint ownership • failure boundary",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-003",
+      "title": "Consent and suite freezing • expected behavior",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-004",
+      "title": "Consent and suite freezing • failure boundary",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-005",
+      "title": "Budgeted experiment scheduling • expected behavior",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-006",
+      "title": "Budgeted experiment scheduling • failure boundary",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-007",
+      "title": "Paid execution and receipt matching • expected behavior",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-008",
+      "title": "Paid execution and receipt matching • failure boundary",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-009",
+      "title": "Typed scoring and acceptance • expected behavior",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-010",
+      "title": "Typed scoring and acceptance • failure boundary",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-011",
+      "title": "Comparison reports • expected behavior",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-012",
+      "title": "Comparison reports • failure boundary",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-013",
+      "title": "Audit, freshness and reruns • expected behavior",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-014",
+      "title": "Audit, freshness and reruns • failure boundary",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-015",
+      "title": "Buyer workflow and acceptance proof • expected behavior",
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "T-016",
+      "title": "Buyer workflow and acceptance proof • failure boundary",
+      "status": "NOT_RUN"
+    }
+  ],
+  "modules": [
+    {
+      "id": "M01",
+      "name": "Endpoint ownership",
+      "file": "prompts/M01.md",
+      "requirements": [
+        "FR-01"
+      ],
+      "nonfunctional": [
+        "NFR-01"
+      ],
+      "invariants": [
+        "INV-01"
+      ],
+      "tests": [
+        "T-001",
+        "T-002"
+      ],
+      "dependsOn": [],
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "M02",
+      "name": "Consent and suite freezing",
+      "file": "prompts/M02.md",
+      "requirements": [
+        "FR-02"
+      ],
+      "nonfunctional": [
+        "NFR-01"
+      ],
+      "invariants": [
+        "INV-02"
+      ],
+      "tests": [
+        "T-003",
+        "T-004"
+      ],
+      "dependsOn": [
+        "M01"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "M03",
+      "name": "Budgeted experiment scheduling",
+      "file": "prompts/M03.md",
+      "requirements": [
+        "FR-03"
+      ],
+      "nonfunctional": [
+        "NFR-01"
+      ],
+      "invariants": [
+        "INV-03"
+      ],
+      "tests": [
+        "T-005",
+        "T-006"
+      ],
+      "dependsOn": [
+        "M02"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "M04",
+      "name": "Paid execution and receipt matching",
+      "file": "prompts/M04.md",
+      "requirements": [
+        "FR-04"
+      ],
+      "nonfunctional": [
+        "NFR-01"
+      ],
+      "invariants": [
+        "INV-04"
+      ],
+      "tests": [
+        "T-007",
+        "T-008"
+      ],
+      "dependsOn": [
+        "M03"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "M05",
+      "name": "Typed scoring and acceptance",
+      "file": "prompts/M05.md",
+      "requirements": [
+        "FR-05"
+      ],
+      "nonfunctional": [
+        "NFR-01"
+      ],
+      "invariants": [
+        "INV-05"
+      ],
+      "tests": [
+        "T-009",
+        "T-010"
+      ],
+      "dependsOn": [
+        "M04"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "M06",
+      "name": "Comparison reports",
+      "file": "prompts/M06.md",
+      "requirements": [
+        "FR-06"
+      ],
+      "nonfunctional": [
+        "NFR-01"
+      ],
+      "invariants": [
+        "INV-06"
+      ],
+      "tests": [
+        "T-011",
+        "T-012"
+      ],
+      "dependsOn": [
+        "M05"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "M07",
+      "name": "Audit, freshness and reruns",
+      "file": "prompts/M07.md",
+      "requirements": [
+        "FR-07"
+      ],
+      "nonfunctional": [
+        "NFR-01"
+      ],
+      "invariants": [
+        "INV-07"
+      ],
+      "tests": [
+        "T-013",
+        "T-014"
+      ],
+      "dependsOn": [
+        "M06"
+      ],
+      "status": "NOT_RUN"
+    },
+    {
+      "id": "M08",
+      "name": "Buyer workflow and acceptance proof",
+      "file": "prompts/M08.md",
+      "requirements": [
+        "FR-08"
+      ],
+      "nonfunctional": [
+        "NFR-01"
+      ],
+      "invariants": [
+        "INV-08"
+      ],
+      "tests": [
+        "T-015",
+        "T-016"
+      ],
+      "dependsOn": [
+        "M07"
+      ],
+      "status": "NOT_RUN"
+    }
+  ]
+}
