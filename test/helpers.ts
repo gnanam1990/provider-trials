@@ -106,6 +106,84 @@ export async function makeAccount(port: number, name = "buyer"): Promise<Record<
   };
 }
 
+/** Registers + binds a FakeProvider through the real challenge/binding flow. */
+export async function bindProvider(
+  port: number,
+  operator: Actor,
+  fake: FakeProvider,
+  name = "provider",
+): Promise<string> {
+  const reg = await api(port, operator, "POST", "/providers", {
+    name,
+    endpoint_origin: fake.origin,
+    key_id: fake.keyId,
+    public_key_pem: fake.keys.publicKeyPem,
+  });
+  const providerId = reg.json.provider.id;
+  const ch = await api(port, operator, "POST", `/providers/${providerId}/challenges`);
+  fake.nonce = ch.json.challenge.nonce;
+  const signature = crypto
+    .sign(null, Buffer.from(ch.json.challenge.signing_payload, "utf8"), fake.keys.privateKeyPem)
+    .toString("base64url");
+  const bind = await api(port, operator, "POST", `/providers/${providerId}/bindings`, {
+    challenge_id: ch.json.challenge.challenge_id,
+    signature,
+  });
+  if (bind.status !== 201) throw new Error(`bind failed: ${JSON.stringify(bind.json)}`);
+  return providerId;
+}
+
+/** Re-proves ownership for an existing provider (rotation/re-enrollment). */
+export async function rebindProvider(
+  port: number,
+  operator: Actor,
+  fake: FakeProvider,
+  providerId: string,
+): Promise<void> {
+  const ch = await api(port, operator, "POST", `/providers/${providerId}/challenges`);
+  fake.nonce = ch.json.challenge.nonce;
+  const signature = crypto
+    .sign(null, Buffer.from(ch.json.challenge.signing_payload, "utf8"), fake.keys.privateKeyPem)
+    .toString("base64url");
+  const bind = await api(port, operator, "POST", `/providers/${providerId}/bindings`, {
+    challenge_id: ch.json.challenge.challenge_id,
+    signature,
+  });
+  if (bind.status !== 201) throw new Error(`rebind failed: ${JSON.stringify(bind.json)}`);
+}
+
+/** Creates a frozen suite of n samples with the given labels/consent. */
+export async function makeFrozenSuite(
+  port: number,
+  actors: { steward: Actor },
+  opts: {
+    n?: number;
+    labels?: Record<string, string>;
+    allowed_processors?: string[];
+    normalizer_config?: unknown;
+  } = {},
+): Promise<string> {
+  const n = opts.n ?? 4;
+  const labels = opts.labels ?? { date: "2026-01-15", tax: "1.50", total: "11.50" };
+  const s = await api(port, actors.steward, "POST", "/suites", {
+    name: "tamil-invoices",
+    normalizer_config: opts.normalizer_config,
+  });
+  const suiteId = s.json.suite.id;
+  for (let i = 1; i <= n; i++) {
+    const r = await api(port, actors.steward, "POST", `/suites/${suiteId}/versions/1/samples`, {
+      sample_id: `inv-${i}`,
+      content: `INVOICE ${i} தமிழ் நிறுவனம்`,
+      labels,
+      allowed_processors: opts.allowed_processors,
+    });
+    if (r.status !== 201) throw new Error(`addSample failed: ${JSON.stringify(r.json)}`);
+  }
+  const f = await api(port, actors.steward, "POST", `/suites/${suiteId}/versions/1/freeze`);
+  if (f.status !== 200) throw new Error(`freeze failed: ${JSON.stringify(f.json)}`);
+  return suiteId;
+}
+
 export interface OcrInvocation {
   invocation_ref: string;
   sample_url?: string;

@@ -20,11 +20,15 @@
     {
       "id": "M02",
       "title": "Consent and suite freezing",
-      "state": "pending",
+      "state": "accepted",
       "owner": null,
-      "commands": [],
-      "evidence": [],
-      "nextAction": "Import consented redacted invoices, create buyer-only truth records, document allowed processors and hash a versioned sample manifest and normalization configuration."
+      "commands": [
+        "node --test test/m02.test.ts"
+      ],
+      "evidence": [
+        "T-003 label correction -> new version, different manifest; frozen edit 409. T-004 consent exclusion denies URL issuance, forged sig and unsigned access. 2 tests exit 0"
+      ],
+      "nextAction": "complete"
     },
     {
       "id": "M03",

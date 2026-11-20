@@ -142,5 +142,6 @@ function sendError(res: http.ServerResponse, e: unknown): void {
     send(res, { status: e.status, json: { error: { code: e.code, message: e.message, details: e.details } } });
     return;
   }
+  console.error("unhandled route error:", e);
   send(res, { status: 500, json: { error: { code: "internal", message: "internal error" } } });
 }

@@ -5,6 +5,9 @@ import { forbidden, notFound } from "../lib/errors.ts";
 import * as accounts from "../domain/accounts.ts";
 import * as providers from "../domain/providers.ts";
 import * as suites from "../domain/suites.ts";
+import * as trials from "../domain/trials.ts";
+import * as execution from "../domain/execution.ts";
+import { runIdempotent } from "../idempotency.ts";
 
 export function buildApi(ctx: Ctx): Router {
   const r = new Router();
@@ -178,7 +181,114 @@ export function buildApi(ctx: Ctx): Router {
     return { text: blob.body, headers: { "content-type": blob.media_type } };
   });
 
+  r.post("/trials", (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "procurement_lead");
+    const key = headerOf(req, "idempotency-key");
+    const body = { ...(req.body ?? {}), idempotency_key: key };
+    const { value, replayed } = runIdempotent(ctx, a, key, body, () => {
+      const t = trials.createTrial(ctx, a, body);
+      return { ref: t.id, value: { trial: publicTrial(t) } };
+    });
+    return { status: replayed ? 200 : 201, json: value };
+  });
+
+  r.get("/trials", (req) => {
+    const a = requireActor(ctx, req);
+    const rows = ctx.db.all("SELECT * FROM trials WHERE account_id=? ORDER BY created_at", a.accountId);
+    return { json: { trials: rows.map(publicTrial) } };
+  });
+
+  r.get("/trials/{id}", (req) => {
+    const a = requireActor(ctx, req);
+    const t = trials.getTrial(ctx, req.params.id);
+    if (t.account_id !== a.accountId) throw notFound("trial");
+    return { json: { trial: publicTrial(t) } };
+  });
+
+  r.post("/trials/{id}/run", async (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "runner");
+    const t = trials.getTrial(ctx, req.params.id);
+    if (t.account_id !== a.accountId) throw notFound("trial");
+    const key = headerOf(req, "idempotency-key");
+    const { value, replayed } = runIdempotent(ctx, a, key, { trial_id: t.id }, () => ({
+      ref: t.id,
+      value: { pending: true },
+    }));
+    if (replayed) return { json: { ...trialRunState(ctx, t.id), replayed: true } };
+    const out = await trials.runTrial(ctx, a, t.id);
+    // Store the real result under the idempotency key so replays match.
+    if (key) {
+      ctx.db.run("UPDATE idempotency_keys SET response_json=? WHERE key=? AND account_id=?",
+        JSON.stringify(trialRunState(ctx, t.id)), key, a.accountId);
+    }
+    return { json: { ...out, ...trialRunState(ctx, t.id) } };
+  });
+
+  r.get("/trials/{id}/coverage", (req) => {
+    const a = requireActor(ctx, req);
+    const t = trials.getTrial(ctx, req.params.id);
+    if (t.account_id !== a.accountId) throw notFound("trial");
+    return { json: { coverage: trials.trialCoverage(ctx, t.id) } };
+  });
+
+  r.post("/trials/{id}/reconcile", async (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "runner");
+    const out = await execution.reconcileTrial(ctx, a, req.params.id);
+    return { json: out };
+  });
+
+  r.post("/trials/{id}/cells/{provider}/{sample}/retry", async (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "runner");
+    const t = trials.getTrial(ctx, req.params.id);
+    if (t.account_id !== a.accountId) throw notFound("trial");
+    const outcome = await execution.retryCell(ctx, a, t.id, req.params.provider, req.params.sample);
+    return { json: { outcome } };
+  });
+
+  // Worker surface: drain the durable dispatch queue (bounded concurrency).
+  r.post("/internal/drain", async (req) => {
+    const a = requireActor(ctx, req);
+    requireRole(a, "runner");
+    const out = await execution.drainOutbox(ctx);
+    return { json: out };
+  });
+
   return r;
+}
+
+function headerOf(req: import("../lib/router.ts").Req, name: string): string | undefined {
+  const v = req.headers[name];
+  return Array.isArray(v) ? v[0] : v;
+}
+
+function publicTrial(t: any) {
+  return {
+    id: t.id,
+    suite_id: t.suite_id,
+    suite_version: t.suite_version,
+    manifest_hash: t.manifest_hash,
+    state: t.state,
+    budget_minor: t.budget_minor,
+    per_provider_cap_minor: t.per_provider_cap_minor,
+    asset: t.asset,
+    providers: JSON.parse(t.providers_json),
+    exclusions: JSON.parse(t.exclusions_json),
+    ranking_min_observations: t.ranking_min_observations,
+    small_sample_threshold: t.small_sample_threshold,
+    created_by: t.created_by,
+    created_at: t.created_at,
+    started_at: t.started_at,
+    finished_at: t.finished_at,
+  };
+}
+
+function trialRunState(ctx: Ctx, trialId: string) {
+  const cov = trials.trialCoverage(ctx, trialId);
+  return { state: cov.state, providers: cov.providers };
 }
 
 /** The enrolled principal must be the acting subject for ownership proofs. */
